@@ -5,6 +5,7 @@ import { EmptyState } from './EmptyState';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../../context/ChatContext';
 import { useAuth } from '../../context/AuthContext';
+import { DEMO_MODE } from '../../services/api';
 
 export function ChatWindow() {
   const { user } = useAuth();
@@ -31,9 +32,16 @@ export function ChatWindow() {
             {messages.length > 0 ? `${messages.length} message${messages.length !== 1 ? 's' : ''}` : 'Start a conversation'}
           </p>
         </div>
-        {/* Future: model selector badge */}
-        <div className="flex-shrink-0 px-2.5 py-1 bg-surface-card border border-surface-border rounded-full">
-          <span className="text-ink-muted text-xs">Demo Mode</span>
+        {/* Connection mode badge */}
+        <div className={`flex-shrink-0 px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${
+          DEMO_MODE
+            ? 'bg-surface-card border-surface-border'
+            : 'bg-success/10 border-success/30'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${DEMO_MODE ? 'bg-ink-muted' : 'bg-success animate-pulse'}`} />
+          <span className={`text-xs ${DEMO_MODE ? 'text-ink-muted' : 'text-success'}`}>
+            {DEMO_MODE ? 'Demo Mode' : 'Live'}
+          </span>
         </div>
       </div>
 
