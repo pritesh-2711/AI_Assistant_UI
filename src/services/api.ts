@@ -1,13 +1,16 @@
 /**
- * API service layer — ready to wire to the FastAPI backend.
- * All endpoints mirror the expected REST surface based on the DB schema.
- * Currently operates in DEMO MODE (localStorage-backed mock) when no backend is reachable.
+ * API service layer — wired to the FastAPI backend at localhost:8000.
+ *
+ * DEMO_MODE = true  → all data lives in localStorage, no backend required.
+ * DEMO_MODE = false → calls the real FastAPI server (start with: python api_server.py).
+ *
+ * The Vite dev-server proxies /api → http://localhost:8000 (see vite.config.ts).
  */
 
 import type { User, Session, ChatMessage, AuthTokens } from '../types';
 
 const BASE_URL = '/api';
-const DEMO_MODE = true; // flip to false once FastAPI backend is live
+export const DEMO_MODE = false; // set to true to use localStorage mock
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
@@ -35,6 +38,8 @@ async function request<T>(
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
+  if (res.status === 204) return undefined as T;
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error((err as { detail: string }).detail ?? 'Request failed');
@@ -49,13 +54,8 @@ const DEMO_USERS_KEY = 'demo_users';
 const DEMO_SESSIONS_KEY = 'demo_sessions';
 const DEMO_CHATS_KEY = 'demo_chats';
 
-function uuid(): string {
-  return crypto.randomUUID();
-}
-
-function now(): string {
-  return new Date().toISOString();
-}
+function demoUuid(): string { return crypto.randomUUID(); }
+function demoNow(): string  { return new Date().toISOString(); }
 
 function getDemoUsers(): User[] {
   return JSON.parse(localStorage.getItem(DEMO_USERS_KEY) ?? '[]') as User[];
@@ -63,14 +63,12 @@ function getDemoUsers(): User[] {
 function saveDemoUsers(u: User[]) {
   localStorage.setItem(DEMO_USERS_KEY, JSON.stringify(u));
 }
-
 function getDemoSessions(): Session[] {
   return JSON.parse(localStorage.getItem(DEMO_SESSIONS_KEY) ?? '[]') as Session[];
 }
 function saveDemoSessions(s: Session[]) {
   localStorage.setItem(DEMO_SESSIONS_KEY, JSON.stringify(s));
 }
-
 function getDemoChats(): ChatMessage[] {
   return JSON.parse(localStorage.getItem(DEMO_CHATS_KEY) ?? '[]') as ChatMessage[];
 }
@@ -86,10 +84,8 @@ export async function signUp(name: string, email: string, password: string): Pro
     if (users.find(u => u.email === email)) {
       throw new Error('An account with this email already exists.');
     }
-    const newUser: User = { user_id: uuid(), name, email, created_at: now() };
-    // store password alongside (demo only — never do this in prod)
-    const record = { ...newUser, password };
-    localStorage.setItem(`demo_user_${email}`, JSON.stringify(record));
+    const newUser: User = { user_id: demoUuid(), name, email, created_at: demoNow() };
+    localStorage.setItem(`demo_user_${email}`, JSON.stringify({ ...newUser, password }));
     users.push(newUser);
     saveDemoUsers(users);
     return newUser;
@@ -114,11 +110,13 @@ export async function signIn(email: string, password: string): Promise<{ user: U
     return { user, token };
   }
 
+  // Real backend: POST /auth/signin → {access_token, token_type}
   const tokens = await request<AuthTokens>('/auth/signin', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
   setToken(tokens.access_token);
+  // Fetch full user profile from JWT-protected /auth/me
   const user = await getMe();
   return { user, token: tokens.access_token };
 }
@@ -141,13 +139,16 @@ export async function getMe(): Promise<User> {
 
 // ─── Sessions ─────────────────────────────────────────────────────────────────
 
+/**
+ * Fetch sessions for the current user.
+ * In real mode the backend resolves the user from the JWT — no user_id needed in the URL.
+ * The userId param is kept for demo-mode filtering only.
+ */
 export async function getSessions(userId: string): Promise<Session[]> {
   if (DEMO_MODE) {
     const sessions = getDemoSessions()
       .filter(s => s.user_id === userId && s.is_active)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    // Attach preview (last message snippet)
     const chats = getDemoChats();
     return sessions.map(s => {
       const msgs = chats.filter(c => c.session_id === s.session_id);
@@ -155,36 +156,39 @@ export async function getSessions(userId: string): Promise<Session[]> {
       return { ...s, preview: last?.message.slice(0, 60) };
     });
   }
-  return request<Session[]>(`/sessions?user_id=${userId}`);
+  // GET /sessions — user identity comes from Bearer token
+  return request<Session[]>('/sessions');
 }
 
-export async function createSession(userId: string, sessionName: string): Promise<Session> {
+/**
+ * Create a new session.
+ * In real mode the user_id is derived from the JWT on the backend.
+ */
+export async function createSession(_userId: string, sessionName: string): Promise<Session> {
   if (DEMO_MODE) {
     const session: Session = {
-      session_id: uuid(),
-      user_id: userId,
+      session_id: demoUuid(),
+      user_id: _userId,
       session_name: sessionName,
       is_active: true,
-      created_at: now(),
+      created_at: demoNow(),
     };
     const sessions = getDemoSessions();
     sessions.push(session);
     saveDemoSessions(sessions);
     return session;
   }
+  // POST /sessions — only session_name needed; user_id comes from JWT
   return request<Session>('/sessions', {
     method: 'POST',
-    body: JSON.stringify({ user_id: userId, session_name: sessionName }),
+    body: JSON.stringify({ session_name: sessionName }),
   });
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
   if (DEMO_MODE) {
-    const sessions = getDemoSessions().filter(s => s.session_id !== sessionId);
-    saveDemoSessions(sessions);
-    // cascade delete messages
-    const chats = getDemoChats().filter(c => c.session_id !== sessionId);
-    saveDemoChats(chats);
+    saveDemoSessions(getDemoSessions().filter(s => s.session_id !== sessionId));
+    saveDemoChats(getDemoChats().filter(c => c.session_id !== sessionId));
     return;
   }
   await request(`/sessions/${sessionId}`, { method: 'DELETE' });
@@ -192,10 +196,11 @@ export async function deleteSession(sessionId: string): Promise<void> {
 
 export async function terminateSession(sessionId: string): Promise<void> {
   if (DEMO_MODE) {
-    const sessions = getDemoSessions().map(s =>
-      s.session_id === sessionId ? { ...s, is_active: false, terminated_at: now() } : s
+    saveDemoSessions(
+      getDemoSessions().map(s =>
+        s.session_id === sessionId ? { ...s, is_active: false } : s,
+      ),
     );
-    saveDemoSessions(sessions);
     return;
   }
   await request(`/sessions/${sessionId}/terminate`, { method: 'POST' });
@@ -212,44 +217,50 @@ export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
   return request<ChatMessage[]>(`/sessions/${sessionId}/messages`);
 }
 
+/**
+ * Send a user message and receive the assistant's reply.
+ *
+ * Real mode: POST /sessions/:id/messages with {message}
+ * The backend persists both messages and returns {user_message, assistant_message}.
+ * Field names are snake_case from Pydantic — mapped to camelCase here.
+ */
 export async function sendMessage(
   sessionId: string,
   message: string,
 ): Promise<{ userMessage: ChatMessage; assistantMessage: ChatMessage }> {
   if (DEMO_MODE) {
     const userMsg: ChatMessage = {
-      chat_id: uuid(),
+      chat_id: demoUuid(),
       session_id: sessionId,
       sender: 'user',
       message,
-      created_at: now(),
+      created_at: demoNow(),
     };
-
-    // Simulate assistant response
     const assistantMsg: ChatMessage = {
-      chat_id: uuid(),
+      chat_id: demoUuid(),
       session_id: sessionId,
       sender: 'assistant',
       message: getDemoResponse(message),
-      created_at: now(),
+      created_at: demoNow(),
     };
-
     const chats = getDemoChats();
     chats.push(userMsg, assistantMsg);
     saveDemoChats(chats);
     return { userMessage: userMsg, assistantMessage: assistantMsg };
   }
 
-  const userMsg = await request<ChatMessage>(`/sessions/${sessionId}/messages`, {
-    method: 'POST',
-    body: JSON.stringify({ sender: 'user', message }),
-  });
-  const assistantMsg = await request<ChatMessage>(`/sessions/${sessionId}/chat`, {
-    method: 'POST',
-    body: JSON.stringify({ message }),
-  });
-  return { userMessage: userMsg, assistantMessage: assistantMsg };
+  // Single endpoint — backend handles the full cycle (store → LLM → store → return)
+  const res = await request<{ user_message: ChatMessage; assistant_message: ChatMessage }>(
+    `/sessions/${sessionId}/messages`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    },
+  );
+  return { userMessage: res.user_message, assistantMessage: res.assistant_message };
 }
+
+// ─── Demo response fallback ───────────────────────────────────────────────────
 
 function getDemoResponse(userMessage: string): string {
   const lm = userMessage.toLowerCase();
