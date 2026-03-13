@@ -1,0 +1,132 @@
+import type {
+  ChatMessageResponse,
+  CreateSessionRequest,
+  SendMessageRequest,
+  SendMessageResponse,
+  SessionResponse,
+  SignInRequest,
+  SignUpRequest,
+  TokenResponse,
+  UserResponse,
+} from '../types/api'
+
+const BASE_URL = '/api'
+
+class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+function getToken(): string | null {
+  return localStorage.getItem('access_token')
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const token = getToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers })
+
+  if (!res.ok) {
+    let detail = res.statusText
+    try {
+      const body = await res.json()
+      detail = body.detail ?? detail
+    } catch {
+      // ignore parse failure
+    }
+    throw new ApiError(res.status, detail)
+  }
+
+  if (res.status === 204) {
+    return undefined as T
+  }
+
+  return res.json() as Promise<T>
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export const authApi = {
+  signup(body: SignUpRequest): Promise<UserResponse> {
+    return request('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  },
+
+  signin(body: SignInRequest): Promise<TokenResponse> {
+    return request('/auth/signin', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  },
+
+  signout(): Promise<void> {
+    return request('/auth/signout', { method: 'POST' })
+  },
+
+  me(): Promise<UserResponse> {
+    return request('/auth/me')
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Sessions
+// ---------------------------------------------------------------------------
+
+export const sessionsApi = {
+  list(): Promise<SessionResponse[]> {
+    return request('/sessions')
+  },
+
+  create(body: CreateSessionRequest): Promise<SessionResponse> {
+    return request('/sessions', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  },
+
+  delete(sessionId: string): Promise<void> {
+    return request(`/sessions/${sessionId}`, { method: 'DELETE' })
+  },
+
+  terminate(sessionId: string): Promise<void> {
+    return request(`/sessions/${sessionId}/terminate`, { method: 'POST' })
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+export const chatApi = {
+  getMessages(sessionId: string): Promise<ChatMessageResponse[]> {
+    return request(`/sessions/${sessionId}/messages`)
+  },
+
+  sendMessage(sessionId: string, body: SendMessageRequest): Promise<SendMessageResponse> {
+    return request(`/sessions/${sessionId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  },
+}
+
+export { ApiError }
