@@ -1,90 +1,35 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import type { ReactNode } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { ChatProvider } from './context/ChatContext';
-import { SignIn } from './pages/SignIn';
-import { SignUp } from './pages/SignUp';
-import { Chat } from './pages/Chat';
+import { useEffect } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { useAuthStore } from './store/authStore'
+import AuthPage from './pages/AuthPage'
+import ChatPage from './pages/ChatPage'
 
-function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
-          <p className="text-ink-muted text-sm">Loading…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/signin" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function GuestRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return <Navigate to="/chat" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/chat" replace />} />
-      <Route
-        path="/signin"
-        element={
-          <GuestRoute>
-            <SignIn />
-          </GuestRoute>
-        }
-      />
-      <Route
-        path="/signup"
-        element={
-          <GuestRoute>
-            <SignUp />
-          </GuestRoute>
-        }
-      />
-      <Route
-        path="/chat"
-        element={
-          <ProtectedRoute>
-            <ChatProvider>
-              <Chat />
-            </ChatProvider>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
-  );
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const token = useAuthStore((s) => s.token)
+  if (!token) return <Navigate to="/auth" replace />
+  return <>{children}</>
 }
 
 export default function App() {
+  const loadMe = useAuthStore((s) => s.loadMe)
+
+  useEffect(() => {
+    loadMe()
+  }, [loadMe])
+
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <Routes>
+        <Route path="/auth" element={<AuthPage />} />
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <ChatPage />
+            </RequireAuth>
+          }
+        />
+      </Routes>
     </BrowserRouter>
-  );
+  )
 }
