@@ -97,6 +97,11 @@
   flex-shrink: 0;
 }
 
+.inputAreaDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .inputWrap {
   display: flex;
   align-items: flex-end;
@@ -159,6 +164,83 @@
   background: var(--bg-elevated);
   color: var(--text-muted);
   cursor: not-allowed;
+}
+
+.uploadBtn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.uploadBtn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.uploadBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.uploadBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 5px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-width: 100%;
+}
+
+.uploadBadgeDone {
+  border-color: rgba(74, 222, 128, 0.25);
+  color: var(--success);
+  background: rgba(74, 222, 128, 0.07);
+}
+
+.uploadBadgeError {
+  border-color: rgba(224, 85, 85, 0.25);
+  color: var(--danger);
+  background: var(--danger-dim);
+}
+
+.uploadSpinner {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: spin 0.6s linear infinite;
+}
+
+.uploadName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uploadDismiss {
+  font-size: 11px;
+  color: inherit;
+  opacity: 0.6;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.uploadDismiss:hover {
+  opacity: 1;
 }
 
 .hint {

@@ -34,6 +34,26 @@ export interface SendMessageResponse {
   assistant_message: ChatMessageResponse
 }
 
+export interface UploadResponse {
+  session_id: string
+  filename: string
+  file_path: string
+  size_bytes: number
+  content_type: string
+  file_description: string
+  parent_chunks: number
+  child_chunks: number
+}
+
+export interface DocumentRecord {
+  filename: string
+  file_description: string
+  file_type: string
+  parent_chunks: number
+  child_chunks: number
+  ingested_at: string
+}
+
 // Request bodies
 export interface SignUpRequest {
   name: string

@@ -1,12 +1,14 @@
 import type {
   ChatMessageResponse,
   CreateSessionRequest,
+  DocumentRecord,
   SendMessageRequest,
   SendMessageResponse,
   SessionResponse,
   SignInRequest,
   SignUpRequest,
   TokenResponse,
+  UploadResponse,
   UserResponse,
 } from '../types/api'
 
@@ -126,6 +128,47 @@ export const chatApi = {
       method: 'POST',
       body: JSON.stringify(body),
     })
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Documents (upload + listing)
+// ---------------------------------------------------------------------------
+
+export const documentsApi = {
+  /**
+   * Upload a PDF or DOCX file to a session.
+   * Uses FormData so the browser sets the correct multipart Content-Type.
+   */
+  upload(
+    sessionId: string,
+    file: File,
+    fileDescription: string = '',
+  ): Promise<UploadResponse> {
+    const token = getToken()
+    const form = new FormData()
+    form.append('file', file)
+    form.append('file_description', fileDescription)
+
+    return fetch(`${BASE_URL}/sessions/${sessionId}/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      if (!res.ok) {
+        let detail = res.statusText
+        try {
+          const body = await res.json()
+          detail = body.detail ?? detail
+        } catch { /* ignore */ }
+        throw new ApiError(res.status, detail)
+      }
+      return res.json() as Promise<UploadResponse>
+    })
+  },
+
+  list(sessionId: string): Promise<DocumentRecord[]> {
+    return request(`/sessions/${sessionId}/documents`)
   },
 }
 

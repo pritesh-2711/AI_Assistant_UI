@@ -1,15 +1,20 @@
-import { useState, useRef, type KeyboardEvent, type FormEvent } from 'react';
-import { Send, Loader2, Paperclip } from 'lucide-react';
+import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Loader2, Paperclip, Send } from 'lucide-react';
 
 interface ChatInputProps {
   onSend: (text: string) => Promise<void>;
+  onUpload: (file: File) => Promise<void>;
   isSending: boolean;
   disabled?: boolean;
 }
 
-export function ChatInput({ onSend, isSending, disabled }: ChatInputProps) {
+const ACCEPTED = '.pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+export function ChatInput({ onSend, onUpload, isSending, disabled }: ChatInputProps) {
   const [value, setValue] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -29,15 +34,25 @@ export function ChatInput({ onSend, isSending, disabled }: ChatInputProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);
-    // Auto-resize
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   };
 
   const resetHeight = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so the same file can be re-selected after an error
+    e.target.value = '';
+    setIsUploading(true);
+    try {
+      await onUpload(file);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -45,16 +60,34 @@ export function ChatInput({ onSend, isSending, disabled }: ChatInputProps) {
 
   return (
     <div className="border-t border-surface-border bg-surface-raised px-4 py-4">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={ACCEPTED}
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
         <div className="flex items-end gap-3 bg-surface-card border border-surface-border rounded-2xl px-4 py-3 focus-within:border-brand/50 focus-within:ring-1 focus-within:ring-brand/20 transition-all">
-          {/* Upload (future) */}
+          {/* Paperclip — opens file picker */}
           <button
             type="button"
-            disabled
-            title="Document upload coming soon"
-            className="flex-shrink-0 p-1.5 rounded-lg text-ink-muted opacity-40 cursor-not-allowed mb-0.5"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || isUploading}
+            title={isUploading ? 'Processing…' : 'Upload PDF or DOCX'}
+            className={`flex-shrink-0 p-1.5 rounded-lg mb-0.5 transition-all ${
+              isUploading
+                ? 'text-brand opacity-70 cursor-not-allowed'
+                : 'text-ink-muted hover:text-brand hover:bg-brand/10'
+            }`}
           >
-            <Paperclip size={17} />
+            {isUploading ? (
+              <Loader2 size={17} className="animate-spin" />
+            ) : (
+              <Paperclip size={17} />
+            )}
           </button>
 
           {/* Textarea */}
@@ -63,13 +96,13 @@ export function ChatInput({ onSend, isSending, disabled }: ChatInputProps) {
             value={value}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything…"
+            placeholder="Ask anything about your documents…"
             rows={1}
             disabled={disabled}
             className="flex-1 bg-transparent text-ink-primary placeholder-ink-muted text-sm resize-none outline-none leading-relaxed max-h-[200px] overflow-y-auto scrollbar-hide disabled:opacity-50"
           />
 
-          {/* Send button */}
+          {/* Send */}
           <button
             type="submit"
             disabled={!canSend}
@@ -88,8 +121,9 @@ export function ChatInput({ onSend, isSending, disabled }: ChatInputProps) {
         </div>
 
         <p className="text-ink-muted text-xs text-center mt-2">
-          Press <kbd className="px-1 py-0.5 bg-surface-card border border-surface-border rounded text-xs">Enter</kbd> to send &nbsp;·&nbsp;
-          <kbd className="px-1 py-0.5 bg-surface-card border border-surface-border rounded text-xs">Shift+Enter</kbd> for new line
+          <kbd className="px-1 py-0.5 bg-surface-card border border-surface-border rounded text-xs">Enter</kbd> to send &nbsp;·&nbsp;
+          <kbd className="px-1 py-0.5 bg-surface-card border border-surface-border rounded text-xs">Shift+Enter</kbd> for new line &nbsp;·&nbsp;
+          <Paperclip size={10} className="inline mb-0.5" /> for PDF / DOCX
         </p>
       </form>
     </div>

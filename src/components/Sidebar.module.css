@@ -299,6 +299,30 @@
   text-overflow: ellipsis;
 }
 
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.driveBtn {
+  color: var(--text-muted);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.driveBtn:hover {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.driveBtnActive {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
 .signout {
   color: var(--text-muted);
   padding: 6px;
