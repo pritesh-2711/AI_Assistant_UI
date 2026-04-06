@@ -9,6 +9,7 @@ import {
   sendMessage,
 } from '../services/api';
 import { useAuth } from './AuthContext';
+import { useDocumentsStore } from '../store/documentsStore';
 
 interface ChatContextValue {
   sessions: Session[];
@@ -32,6 +33,7 @@ function generateSessionName(): string {
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const loadDocuments = useDocumentsStore((s) => s.loadDocuments);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -85,6 +87,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoadingMessages(false);
     }
+    // Pre-load documents for the newly selected session
+    void loadDocuments(session.session_id);
   }, [activeSession, cleanupEmptySession]);
 
   const sendUserMessage = useCallback(async (text: string) => {

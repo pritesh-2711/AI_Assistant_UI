@@ -5,9 +5,11 @@ import styles from './Sidebar.module.css'
 
 interface Props {
   onSignout: () => void
+  onToggleDrive: () => void
+  driveOpen: boolean
 }
 
-export default function Sidebar({ onSignout }: Props) {
+export default function Sidebar({ onSignout, onToggleDrive, driveOpen }: Props) {
   const user = useAuthStore((s) => s.user)
   const {
     sessions,
@@ -161,17 +163,29 @@ export default function Sidebar({ onSignout }: Props) {
             <span className={styles.userEmail}>{user?.email}</span>
           </div>
         </div>
-        <button className={styles.signout} onClick={onSignout} title="Sign out">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-            <path
-              d="M5.5 3H3a1 1 0 00-1 1v7a1 1 0 001 1h2.5M9.5 10l3-2.5-3-2.5M12.5 7.5H5.5"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+        <div className={styles.footerActions}>
+          <button
+            className={`${styles.driveBtn} ${driveOpen ? styles.driveBtnActive : ''}`}
+            onClick={onToggleDrive}
+            title="My Documents"
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <rect x="2" y="3" width="11" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+              <path d="M5 7h5M5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <button className={styles.signout} onClick={onSignout} title="Sign out">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <path
+                d="M5.5 3H3a1 1 0 00-1 1v7a1 1 0 001 1h2.5M9.5 10l3-2.5-3-2.5M12.5 7.5H5.5"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
     </aside>
   )
