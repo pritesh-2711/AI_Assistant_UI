@@ -215,8 +215,9 @@ No separate tracking table — ingestion counts are derived on-the-fly from exis
 Two core tables in the `poc2prod` schema:
 
 **`parenthierarchy`** — large parent chunks (≈2000 chars), not embedded
+
 | Column | Type | Notes |
-|--------|------|-------|
+| --- | --- | --- |
 | id | uuid PK | |
 | parent_chunk_content | text | |
 | filename | text | |
@@ -224,10 +225,11 @@ Two core tables in the `poc2prod` schema:
 | content_type | varchar(20) | `'text'` \| `'table'` \| `'image'` |
 
 **`ingestions`** — child chunks with embeddings
+
 | Column | Type | Notes |
-|--------|------|-------|
+| --- | --- | --- |
 | id | uuid PK | |
-| parent_id | uuid FK → parenthierarchy | |
+| parent_id | uuid FK | references parenthierarchy |
 | user_id | uuid | |
 | session_id | uuid | |
 | filename | text | |
