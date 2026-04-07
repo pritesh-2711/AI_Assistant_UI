@@ -7,6 +7,7 @@ interface ChatState {
   activeSessionId: string | null
   messages: ChatMessageResponse[]
   sending: boolean
+  streamingContent: string | null  // accumulates in-flight assistant tokens
   loadingSessions: boolean
   loadingMessages: boolean
   error: string | null
@@ -26,6 +27,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   activeSessionId: null,
   messages: [],
   sending: false,
+  streamingContent: null,
   loadingSessions: false,
   loadingMessages: false,
   error: null,
@@ -38,6 +40,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       activeSessionId: null,
       messages: [],
       sending: false,
+      streamingContent: null,
       error: null,
     }),
 
@@ -114,15 +117,54 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { activeSessionId } = get()
     if (!activeSessionId || !text.trim()) return
 
-    set({ sending: true, error: null })
+    // Optimistically show user message immediately
+    const optimisticId = `optimistic-${Date.now()}`
+    const optimisticUserMsg: ChatMessageResponse = {
+      chat_id: optimisticId,
+      session_id: activeSessionId,
+      sender: 'user',
+      message: text,
+      created_at: new Date().toISOString(),
+    }
+
+    set((state) => ({
+      messages: [...state.messages, optimisticUserMsg],
+      sending: true,
+      streamingContent: '',
+      error: null,
+    }))
+
     try {
-      const res = await chatApi.sendMessage(activeSessionId, { message: text })
-      set((state) => ({
-        messages: [...state.messages, res.user_message, res.assistant_message],
-        sending: false,
-      }))
+      for await (const event of chatApi.streamMessage(activeSessionId, { message: text })) {
+        if (event.type === 'user_message') {
+          // Replace optimistic message with the persisted one from the backend
+          set((state) => ({
+            messages: state.messages.map((m) =>
+              m.chat_id === optimisticId ? event : m,
+            ),
+          }))
+        } else if (event.type === 'token') {
+          set((state) => ({
+            streamingContent: (state.streamingContent ?? '') + event.content,
+          }))
+        } else if (event.type === 'done') {
+          set((state) => ({
+            messages: [...state.messages, event],
+            streamingContent: null,
+            sending: false,
+          }))
+        } else if (event.type === 'error') {
+          throw new Error(event.detail)
+        }
+      }
     } catch (e) {
-      set({ sending: false, error: (e as Error).message })
+      // Remove optimistic message on failure
+      set((state) => ({
+        messages: state.messages.filter((m) => m.chat_id !== optimisticId),
+        sending: false,
+        streamingContent: null,
+        error: (e as Error).message,
+      }))
     }
   },
 }))

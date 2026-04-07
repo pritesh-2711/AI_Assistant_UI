@@ -118,6 +118,12 @@ export const sessionsApi = {
 // Chat
 // ---------------------------------------------------------------------------
 
+export type StreamEvent =
+  | ({ type: 'user_message' } & ChatMessageResponse)
+  | { type: 'token'; content: string }
+  | ({ type: 'done' } & ChatMessageResponse)
+  | { type: 'error'; detail: string }
+
 export const chatApi = {
   getMessages(sessionId: string): Promise<ChatMessageResponse[]> {
     return request(`/sessions/${sessionId}/messages`)
@@ -128,6 +134,50 @@ export const chatApi = {
       method: 'POST',
       body: JSON.stringify(body),
     })
+  },
+
+  async *streamMessage(sessionId: string, body: SendMessageRequest): AsyncGenerator<StreamEvent> {
+    const token = getToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/messages/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    })
+
+    if (!res.ok) {
+      let detail = res.statusText
+      try {
+        const errBody = await res.json()
+        detail = errBody.detail ?? detail
+      } catch { /* ignore */ }
+      throw new ApiError(res.status, detail)
+    }
+
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      // SSE events are separated by double newlines
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() ?? ''
+
+      for (const part of parts) {
+        const line = part.trim()
+        if (line.startsWith('data: ')) {
+          try {
+            yield JSON.parse(line.slice(6)) as StreamEvent
+          } catch { /* skip malformed lines */ }
+        }
+      }
+    }
   },
 }
 
