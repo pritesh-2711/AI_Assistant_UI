@@ -6,7 +6,7 @@ import MessageBubble from './MessageBubble'
 import styles from './ChatArea.module.css'
 
 export default function ChatArea() {
-  const { messages, sending, error, activeSessionId, loadingMessages, sendMessage, clearError } =
+  const { messages, sending, streamingContent, error, activeSessionId, loadingMessages, sendMessage, clearError } =
     useChatStore()
   const user = useAuthStore((s) => s.user)
   const [input, setInput] = useState('')
@@ -91,12 +91,21 @@ export default function ChatArea() {
               />
             ))}
 
-            {sending && (
+            {sending && streamingContent === '' && (
               <div className={styles.thinking}>
                 <span className={styles.thinkingDot} />
                 <span className={styles.thinkingDot} />
                 <span className={styles.thinkingDot} />
               </div>
+            )}
+
+            {streamingContent !== null && streamingContent !== '' && (
+              <MessageBubble
+                message={streamingContent}
+                sender="assistant"
+                createdAt={new Date().toISOString()}
+                userName={user?.name ?? 'You'}
+              />
             )}
 
             {error && (
