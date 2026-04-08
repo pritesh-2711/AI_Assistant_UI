@@ -1,8 +1,10 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Loader2, Paperclip, Send } from 'lucide-react';
+import { Loader2, Paperclip, Send, Zap, BrainCircuit } from 'lucide-react';
+
+type Mode = 'fast' | 'deep';
 
 interface ChatInputProps {
-  onSend: (text: string) => Promise<void>;
+  onSend: (text: string, mode: Mode) => Promise<void>;
   onUpload: (file: File) => Promise<void>;
   isSending: boolean;
   disabled?: boolean;
@@ -12,6 +14,7 @@ const ACCEPTED = '.pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats
 
 export function ChatInput({ onSend, onUpload, isSending, disabled }: ChatInputProps) {
   const [value, setValue] = useState('');
+  const [mode, setMode] = useState<Mode>('fast');
   const [isUploading, setIsUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,7 +25,7 @@ export function ChatInput({ onSend, onUpload, isSending, disabled }: ChatInputPr
     if (!text || isSending || disabled) return;
     setValue('');
     resetHeight();
-    await onSend(text);
+    await onSend(text, mode);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -120,11 +123,36 @@ export function ChatInput({ onSend, onUpload, isSending, disabled }: ChatInputPr
           </button>
         </div>
 
-        <p className="text-ink-muted text-xs text-center mt-2">
-          <kbd className="px-1 py-0.5 bg-surface-card border border-surface-border rounded text-xs">Enter</kbd> to send &nbsp;·&nbsp;
-          <kbd className="px-1 py-0.5 bg-surface-card border border-surface-border rounded text-xs">Shift+Enter</kbd> for new line &nbsp;·&nbsp;
-          <Paperclip size={10} className="inline mb-0.5" /> for PDF / DOCX
-        </p>
+        {/* Bottom row: mode toggle (left) + keyboard hints (right) */}
+        <div className="flex items-center justify-between mt-2">
+
+          {/* Mode toggle — Off = Fast, On = Deep */}
+          <button
+            type="button"
+            onClick={() => setMode(m => m === 'fast' ? 'deep' : 'fast')}
+            disabled={disabled}
+            title={mode === 'fast' ? 'Fast mode — switch to Deep' : 'Deep mode — switch to Fast'}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all duration-200 ${
+              mode === 'deep'
+                ? 'bg-brand/15 border-brand/40 text-brand'
+                : 'bg-surface-card border-surface-border text-ink-muted hover:text-ink-primary hover:border-surface-border/80'
+            } disabled:opacity-40 disabled:cursor-not-allowed`}
+          >
+            {mode === 'fast' ? (
+              <Zap size={11} className="flex-shrink-0" />
+            ) : (
+              <BrainCircuit size={11} className="flex-shrink-0" />
+            )}
+            <span>{mode === 'fast' ? 'Fast' : 'Deep'}</span>
+          </button>
+
+          {/* Keyboard hints */}
+          <p className="text-ink-muted text-xs">
+            <kbd className="px-1 py-0.5 bg-surface-card border border-surface-border rounded text-xs">Enter</kbd> to send &nbsp;·&nbsp;
+            <kbd className="px-1 py-0.5 bg-surface-card border border-surface-border rounded text-xs">Shift+Enter</kbd> new line
+          </p>
+
+        </div>
       </form>
     </div>
   );
