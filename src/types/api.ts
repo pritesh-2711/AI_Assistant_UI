@@ -72,4 +72,5 @@ export interface CreateSessionRequest {
 
 export interface SendMessageRequest {
   message: string
+  mode?: 'fast' | 'deep'
 }

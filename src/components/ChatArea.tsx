@@ -6,7 +6,7 @@ import MessageBubble from './MessageBubble'
 import styles from './ChatArea.module.css'
 
 export default function ChatArea() {
-  const { messages, sending, streamingContent, error, activeSessionId, loadingMessages, sendMessage, clearError } =
+  const { messages, sending, streamingContent, statusContent, error, activeSessionId, loadingMessages, sendMessage, clearError } =
     useChatStore()
   const user = useAuthStore((s) => s.user)
   const [input, setInput] = useState('')
@@ -34,7 +34,7 @@ export default function ChatArea() {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
-    await sendMessage(text)
+    await sendMessage(text, mode)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -51,6 +51,7 @@ export default function ChatArea() {
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`
   }
 
+  const [mode, setMode] = useState<'fast' | 'deep'>('fast')
   const noSession = !activeSessionId
 
   return (
@@ -96,6 +97,11 @@ export default function ChatArea() {
                 <span className={styles.thinkingDot} />
                 <span className={styles.thinkingDot} />
                 <span className={styles.thinkingDot} />
+                {mode === 'deep' && statusContent && (
+                  <span key={statusContent} className={styles.thinkingStatus}>
+                    {statusContent}
+                  </span>
+                )}
               </div>
             )}
 
@@ -168,7 +174,21 @@ export default function ChatArea() {
             </svg>
           </button>
         </div>
-        <p className={styles.hint}>Shift+Enter for newline</p>
+        <div className={styles.hintRow}>
+          {/* Mode toggle — Off (Fast) / On (Deep) */}
+          <button
+            type="button"
+            disabled={noSession}
+            onClick={() => setMode(m => m === 'fast' ? 'deep' : 'fast')}
+            title={mode === 'fast' ? 'Fast mode — click to switch to Deep' : 'Deep mode — click to switch to Fast'}
+            className={`${styles.modeToggle} ${mode === 'deep' ? styles.modeToggleDeep : ''}`}
+          >
+            <span className={styles.modeDot} />
+            {mode === 'fast' ? 'Fast' : 'Deep'}
+          </button>
+
+          <p className={styles.hint}>Shift+Enter for newline</p>
+        </div>
       </div>
     </div>
   )
