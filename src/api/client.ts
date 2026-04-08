@@ -121,6 +121,8 @@ export const sessionsApi = {
 export type StreamEvent =
   | ({ type: 'user_message' } & ChatMessageResponse)
   | { type: 'token'; content: string }
+  | { type: 'status'; content: string }
+  | { type: 'clarification'; content: string }   // deep mode: graph paused, asking user to clarify
   | ({ type: 'done' } & ChatMessageResponse)
   | { type: 'error'; detail: string }
 

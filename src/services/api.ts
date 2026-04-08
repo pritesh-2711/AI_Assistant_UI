@@ -227,6 +227,7 @@ export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
 export async function sendMessage(
   sessionId: string,
   message: string,
+  mode: 'fast' | 'deep' = 'fast',
 ): Promise<{ userMessage: ChatMessage; assistantMessage: ChatMessage }> {
   if (DEMO_MODE) {
     const userMsg: ChatMessage = {
@@ -254,7 +255,7 @@ export async function sendMessage(
     `/sessions/${sessionId}/messages`,
     {
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, mode }),
     },
   );
   return { userMessage: res.user_message, assistantMessage: res.assistant_message };

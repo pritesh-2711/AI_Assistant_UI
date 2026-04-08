@@ -24,8 +24,8 @@ export function ChatWindow() {
     clearUploads();
   }, [activeSession?.session_id, clearUploads]);
 
-  const handleSend = async (text: string) => {
-    await sendUserMessage(text);
+  const handleSend = async (text: string, mode: 'fast' | 'deep') => {
+    await sendUserMessage(text, mode);
   };
 
   const handleUpload = async (file: File) => {
@@ -89,7 +89,7 @@ export function ChatWindow() {
               <Loader2 size={20} className="animate-spin text-ink-muted" />
             </div>
           ) : messages.length === 0 ? (
-            <EmptyState onSuggestion={handleSend} userName={user?.name} />
+            <EmptyState onSuggestion={(text) => handleSend(text, 'fast')} userName={user?.name} />
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
               {messages.map((msg) => (

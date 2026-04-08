@@ -8,6 +8,7 @@ interface ChatState {
   messages: ChatMessageResponse[]
   sending: boolean
   streamingContent: string | null  // accumulates in-flight assistant tokens
+  statusContent: string | null     // current node status (deep mode only)
   loadingSessions: boolean
   loadingMessages: boolean
   error: string | null
@@ -17,7 +18,7 @@ interface ChatState {
   createSession: (name: string) => Promise<void>
   deleteSession: (sessionId: string) => Promise<void>
   terminateSession: (sessionId: string) => Promise<void>
-  sendMessage: (text: string) => Promise<void>
+  sendMessage: (text: string, mode?: 'fast' | 'deep') => Promise<void>
   clearError: () => void
   reset: () => void
 }
@@ -28,6 +29,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   sending: false,
   streamingContent: null,
+  statusContent: null,
   loadingSessions: false,
   loadingMessages: false,
   error: null,
@@ -41,6 +43,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: [],
       sending: false,
       streamingContent: null,
+      statusContent: null,
       error: null,
     }),
 
@@ -113,7 +116,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (text) => {
+  sendMessage: async (text, mode = 'fast') => {
     const { activeSessionId } = get()
     if (!activeSessionId || !text.trim()) return
 
@@ -131,11 +134,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: [...state.messages, optimisticUserMsg],
       sending: true,
       streamingContent: '',
+      statusContent: null,
       error: null,
     }))
 
     try {
-      for await (const event of chatApi.streamMessage(activeSessionId, { message: text })) {
+      for await (const event of chatApi.streamMessage(activeSessionId, { message: text, mode })) {
         if (event.type === 'user_message') {
           // Replace optimistic message with the persisted one from the backend
           set((state) => ({
@@ -151,8 +155,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
           set((state) => ({
             messages: [...state.messages, event],
             streamingContent: null,
+            statusContent: null,
             sending: false,
           }))
+        } else if (event.type === 'clarification') {
+          // Deep mode paused for clarification — the backend persists the question
+          // as an assistant message; the 'done' event will follow immediately.
+          set((state) => ({
+            streamingContent: (state.streamingContent ?? '') + event.content,
+            statusContent: null,
+          }))
+        } else if (event.type === 'status') {
+          set({ statusContent: event.content })
         } else if (event.type === 'error') {
           throw new Error(event.detail)
         }
@@ -163,6 +177,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: state.messages.filter((m) => m.chat_id !== optimisticId),
         sending: false,
         streamingContent: null,
+        statusContent: null,
         error: (e as Error).message,
       }))
     }

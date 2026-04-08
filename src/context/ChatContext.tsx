@@ -21,7 +21,7 @@ interface ChatContextValue {
   loadSessions: () => Promise<void>;
   selectSession: (session: Session) => Promise<void>;
   startNewSession: () => Promise<void>;
-  sendUserMessage: (text: string) => Promise<void>;
+  sendUserMessage: (text: string, mode?: 'fast' | 'deep') => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -91,7 +91,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     void loadDocuments(session.session_id);
   }, [activeSession, cleanupEmptySession]);
 
-  const sendUserMessage = useCallback(async (text: string) => {
+  const sendUserMessage = useCallback(async (text: string, mode: 'fast' | 'deep' = 'fast') => {
     if (!activeSession || !text.trim()) return;
     setIsSending(true);
     sessionHasMessages.current = true;
@@ -107,7 +107,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setMessages(prev => [...prev, optimisticUser]);
 
     try {
-      const { userMessage, assistantMessage } = await sendMessage(activeSession.session_id, text.trim());
+      const { userMessage, assistantMessage } = await sendMessage(activeSession.session_id, text.trim(), mode);
       setMessages(prev => [
         ...prev.filter(m => m.chat_id !== optimisticUser.chat_id),
         userMessage,
