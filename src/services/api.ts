@@ -78,7 +78,7 @@ function saveDemoChats(c: ChatMessage[]) {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-export async function signUp(name: string, email: string, password: string): Promise<User> {
+export async function signUp(name: string, email: string, password: string): Promise<{ message: string; status: string }> {
   if (DEMO_MODE) {
     const users = getDemoUsers();
     if (users.find(u => u.email === email)) {
@@ -88,10 +88,10 @@ export async function signUp(name: string, email: string, password: string): Pro
     localStorage.setItem(`demo_user_${email}`, JSON.stringify({ ...newUser, password }));
     users.push(newUser);
     saveDemoUsers(users);
-    return newUser;
+    return { message: 'Registration successful. Your account is awaiting admin approval.', status: 'pending' };
   }
 
-  return request<User>('/auth/signup', {
+  return request<{ message: string; status: string }>('/auth/signup', {
     method: 'POST',
     body: JSON.stringify({ name, email, password }),
   });
