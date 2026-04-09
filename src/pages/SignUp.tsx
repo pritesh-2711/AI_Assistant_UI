@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { AuthLayout } from '../components/auth/AuthLayout';
-import { useAuth } from '../context/AuthContext';
-import { signUp, signIn } from '../services/api';
+import { signUp } from '../services/api';
 
 function PasswordStrength({ password }: { password: string }) {
   const checks = [
@@ -33,8 +32,6 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export function SignUp() {
-  const navigate = useNavigate();
-  const { setUser } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,6 +39,7 @@ export function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -53,15 +51,30 @@ export function SignUp() {
     setError('');
     try {
       await signUp(name.trim(), email.trim(), password);
-      const { user } = await signIn(email.trim(), password);
-      setUser(user);
-      navigate('/chat', { replace: true });
+      setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (submitted) {
+    return (
+      <AuthLayout>
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-8 shadow-2xl text-center">
+          <CheckCircle2 size={40} className="mx-auto mb-4 text-success" />
+          <h2 className="text-xl font-semibold text-ink-primary mb-2">Request submitted</h2>
+          <p className="text-ink-secondary text-sm mb-6">
+            Your account is awaiting admin approval. You will be able to sign in once your access is granted.
+          </p>
+          <Link to="/signin" className="text-brand hover:text-brand-glow font-medium text-sm transition-colors">
+            Back to Sign in
+          </Link>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout>
