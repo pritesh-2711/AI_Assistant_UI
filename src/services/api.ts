@@ -4,12 +4,15 @@
  * DEMO_MODE = true  → all data lives in localStorage, no backend required.
  * DEMO_MODE = false → calls the real FastAPI server (start with: python api_server.py).
  *
- * The Vite dev-server proxies /api → http://localhost:8000 (see vite.config.ts).
+ * Local dev: Vite proxies /api → http://localhost:8000 (see vite.config.ts), so
+ *            BASE_URL stays '/api' and no env var is needed.
+ * Production: set VITE_API_BASE_URL=https://api.yourdomain.com at Docker build time.
+ *             The built bundle embeds the value; nginx has no proxy to rely on.
  */
 
 import type { User, Session, ChatMessage, AuthTokens } from '../types';
 
-const BASE_URL = '/api';
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '') + '/api';
 export const DEMO_MODE = false; // set to true to use localStorage mock
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
