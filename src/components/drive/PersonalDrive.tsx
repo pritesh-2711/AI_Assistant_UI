@@ -6,7 +6,6 @@ import {
   FileText,
   HardDrive,
   Loader2,
-  X,
 } from 'lucide-react';
 import { useDocumentsStore, type UploadEntry } from '../../store/documentsStore';
 import type { DocumentRecord } from '../../types/api';

@@ -12,13 +12,23 @@ interface ChatState {
   loadingSessions: boolean
   loadingMessages: boolean
   error: string | null
+  selectedCategory: 'workflow' | 'agent'
+  selectedVariant: 'fast' | 'deep' | 'single_rag_agent' | 'supervisor_orchestration_agent'
 
   loadSessions: () => Promise<void>
   selectSession: (sessionId: string) => Promise<void>
   createSession: (name: string) => Promise<void>
   deleteSession: (sessionId: string) => Promise<void>
   terminateSession: (sessionId: string) => Promise<void>
-  sendMessage: (text: string, mode?: 'fast' | 'deep') => Promise<void>
+  sendMessage: (
+    text: string,
+    category?: 'workflow' | 'agent',
+    variant?: 'fast' | 'deep' | 'single_rag_agent' | 'supervisor_orchestration_agent',
+  ) => Promise<void>
+  setExecutionMode: (
+    category: 'workflow' | 'agent',
+    variant: 'fast' | 'deep' | 'single_rag_agent' | 'supervisor_orchestration_agent',
+  ) => void
   clearError: () => void
   reset: () => void
 }
@@ -33,6 +43,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadingSessions: false,
   loadingMessages: false,
   error: null,
+  selectedCategory: 'workflow',
+  selectedVariant: 'fast',
 
   clearError: () => set({ error: null }),
 
@@ -45,6 +57,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       streamingContent: null,
       statusContent: null,
       error: null,
+      selectedCategory: 'workflow',
+      selectedVariant: 'fast',
+    }),
+
+  setExecutionMode: (category, variant) =>
+    set({
+      selectedCategory: category,
+      selectedVariant: variant,
     }),
 
   loadSessions: async () => {
@@ -116,9 +136,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (text, mode = 'fast') => {
-    const { activeSessionId } = get()
+  sendMessage: async (text, category, variant) => {
+    const { activeSessionId, selectedCategory, selectedVariant } = get()
     if (!activeSessionId || !text.trim()) return
+    const effectiveCategory = category ?? selectedCategory
+    const effectiveVariant = variant ?? selectedVariant
 
     // Optimistically show user message immediately
     const optimisticId = `optimistic-${Date.now()}`
@@ -139,7 +161,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }))
 
     try {
-      for await (const event of chatApi.streamMessage(activeSessionId, { message: text, mode })) {
+      for await (const event of chatApi.streamMessage(activeSessionId, {
+        message: text,
+        category: effectiveCategory,
+        variant: effectiveVariant,
+      })) {
         if (event.type === 'user_message') {
           // Replace optimistic message with the persisted one from the backend
           set((state) => ({

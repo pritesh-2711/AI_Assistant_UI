@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, LogOut, MessageSquare, Clock, Loader2, Trash2 } from 'lucide-react';
+import { Plus, LogOut, MessageSquare, Clock, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
 
