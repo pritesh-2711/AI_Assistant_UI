@@ -73,5 +73,5 @@ export interface CreateSessionRequest {
 export interface SendMessageRequest {
   message: string
   category?: 'workflow' | 'agent'
-  variant?: 'fast' | 'deep' | 'single_rag_agent'
+  variant?: 'fast' | 'deep' | 'single_rag_agent' | 'supervisor_orchestration_agent'
 }

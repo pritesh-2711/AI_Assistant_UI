@@ -195,7 +195,10 @@ export default function ChatArea() {
               onClick={() =>
                 setExecutionMode(
                   'workflow',
-                  selectedVariant === 'single_rag_agent' ? 'fast' : selectedVariant,
+                  selectedVariant === 'single_rag_agent'
+                    || selectedVariant === 'supervisor_orchestration_agent'
+                    ? 'fast'
+                    : selectedVariant,
                 )
               }
               title="Use deterministic workflow orchestration"
@@ -241,15 +244,28 @@ export default function ChatArea() {
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                disabled
-                title="Current agent variant"
-                className={`${styles.modeToggle} ${styles.modeToggleDeep}`}
-              >
-                <span className={styles.modeDot} />
-                Single RAG Agent
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={noSession}
+                  onClick={() => setExecutionMode('agent', 'single_rag_agent')}
+                  title="Single agent with access to all high-level tools"
+                  className={`${styles.modeToggle} ${selectedVariant === 'single_rag_agent' ? styles.modeToggleDeep : ''}`}
+                >
+                  <span className={styles.modeDot} />
+                  Single RAG Agent
+                </button>
+                <button
+                  type="button"
+                  disabled={noSession}
+                  onClick={() => setExecutionMode('agent', 'supervisor_orchestration_agent')}
+                  title="Supervisor delegating to document, web, and math workers"
+                  className={`${styles.modeToggle} ${selectedVariant === 'supervisor_orchestration_agent' ? styles.modeToggleDeep : ''}`}
+                >
+                  <span className={styles.modeDot} />
+                  Supervisor Agent
+                </button>
+              </>
             )}
           </div>
 

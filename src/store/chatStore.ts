@@ -13,7 +13,7 @@ interface ChatState {
   loadingMessages: boolean
   error: string | null
   selectedCategory: 'workflow' | 'agent'
-  selectedVariant: 'fast' | 'deep' | 'single_rag_agent'
+  selectedVariant: 'fast' | 'deep' | 'single_rag_agent' | 'supervisor_orchestration_agent'
 
   loadSessions: () => Promise<void>
   selectSession: (sessionId: string) => Promise<void>
@@ -23,11 +23,11 @@ interface ChatState {
   sendMessage: (
     text: string,
     category?: 'workflow' | 'agent',
-    variant?: 'fast' | 'deep' | 'single_rag_agent',
+    variant?: 'fast' | 'deep' | 'single_rag_agent' | 'supervisor_orchestration_agent',
   ) => Promise<void>
   setExecutionMode: (
     category: 'workflow' | 'agent',
-    variant: 'fast' | 'deep' | 'single_rag_agent',
+    variant: 'fast' | 'deep' | 'single_rag_agent' | 'supervisor_orchestration_agent',
   ) => void
   clearError: () => void
   reset: () => void
