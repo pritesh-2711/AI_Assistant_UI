@@ -6,8 +6,20 @@ import MessageBubble from './MessageBubble'
 import styles from './ChatArea.module.css'
 
 export default function ChatArea() {
-  const { messages, sending, streamingContent, statusContent, error, activeSessionId, loadingMessages, sendMessage, clearError } =
-    useChatStore()
+  const {
+    messages,
+    sending,
+    streamingContent,
+    statusContent,
+    error,
+    activeSessionId,
+    loadingMessages,
+    sendMessage,
+    clearError,
+    selectedCategory,
+    selectedVariant,
+    setExecutionMode,
+  } = useChatStore()
   const user = useAuthStore((s) => s.user)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -25,7 +37,7 @@ export default function ChatArea() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, sending])
+  }, [messages, sending, streamingContent])
 
   const handleSend = async () => {
     const text = input.trim()
@@ -34,13 +46,13 @@ export default function ChatArea() {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
-    await sendMessage(text, mode)
+    await sendMessage(text, selectedCategory, selectedVariant)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSend()
+      void handleSend()
     }
   }
 
@@ -51,8 +63,9 @@ export default function ChatArea() {
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`
   }
 
-  const [mode, setMode] = useState<'fast' | 'deep'>('fast')
   const noSession = !activeSessionId
+  const isWorkflow = selectedCategory === 'workflow'
+  const isAgent = selectedCategory === 'agent'
 
   return (
     <div className={styles.root}>
@@ -97,7 +110,7 @@ export default function ChatArea() {
                 <span className={styles.thinkingDot} />
                 <span className={styles.thinkingDot} />
                 <span className={styles.thinkingDot} />
-                {mode === 'deep' && statusContent && (
+                {statusContent && (
                   <span key={statusContent} className={styles.thinkingStatus}>
                     {statusContent}
                   </span>
@@ -175,17 +188,70 @@ export default function ChatArea() {
           </button>
         </div>
         <div className={styles.hintRow}>
-          {/* Mode toggle — Off (Fast) / On (Deep) */}
-          <button
-            type="button"
-            disabled={noSession}
-            onClick={() => setMode(m => m === 'fast' ? 'deep' : 'fast')}
-            title={mode === 'fast' ? 'Fast mode — click to switch to Deep' : 'Deep mode — click to switch to Fast'}
-            className={`${styles.modeToggle} ${mode === 'deep' ? styles.modeToggleDeep : ''}`}
-          >
-            <span className={styles.modeDot} />
-            {mode === 'fast' ? 'Fast' : 'Deep'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={noSession}
+              onClick={() =>
+                setExecutionMode(
+                  'workflow',
+                  selectedVariant === 'single_rag_agent' ? 'fast' : selectedVariant,
+                )
+              }
+              title="Use deterministic workflow orchestration"
+              className={`${styles.modeToggle} ${isWorkflow ? styles.modeToggleDeep : ''}`}
+            >
+              <span className={styles.modeDot} />
+              Workflows
+            </button>
+
+            <button
+              type="button"
+              disabled={noSession}
+              onClick={() => setExecutionMode('agent', 'single_rag_agent')}
+              title="Use the single RAG agent"
+              className={`${styles.modeToggle} ${isAgent ? styles.modeToggleDeep : ''}`}
+            >
+              <span className={styles.modeDot} />
+              Agents
+            </button>
+
+            {isWorkflow ? (
+              <>
+                <button
+                  type="button"
+                  disabled={noSession}
+                  onClick={() => setExecutionMode('workflow', 'fast')}
+                  title="Fast workflow"
+                  className={`${styles.modeToggle} ${selectedVariant === 'fast' ? styles.modeToggleDeep : ''}`}
+                >
+                  <span className={styles.modeDot} />
+                  Fast
+                </button>
+
+                <button
+                  type="button"
+                  disabled={noSession}
+                  onClick={() => setExecutionMode('workflow', 'deep')}
+                  title="Deep workflow"
+                  className={`${styles.modeToggle} ${selectedVariant === 'deep' ? styles.modeToggleDeep : ''}`}
+                >
+                  <span className={styles.modeDot} />
+                  Deep
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="Current agent variant"
+                className={`${styles.modeToggle} ${styles.modeToggleDeep}`}
+              >
+                <span className={styles.modeDot} />
+                Single RAG Agent
+              </button>
+            )}
+          </div>
 
           <p className={styles.hint}>Shift+Enter for newline</p>
         </div>
