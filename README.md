@@ -1,94 +1,131 @@
 # Chat Assistant UI
 
-A React frontend for the [genai-poc-to-prod](https://github.com/pritesh-2711/genai-poc-to-prod) backend — a session-based AI research chat assistant built with LangChain, PostgreSQL, and FastAPI (in progress).
+React + TypeScript frontend for the research paper chat assistant backend.
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+| ----- | ---------- |
 | Framework | React 18 + TypeScript |
 | Build tool | Vite |
-| Styling | TailwindCSS (custom dark theme) |
-| Routing | React Router v6 |
-| Icons | lucide-react |
-| State | Context API |
-
-## Features
-
-- **Sign Up / Sign In** — email + password auth with form validation and password strength meter
-- **Session management** — new blank session on every login; empty sessions auto-deleted when switching away
-- **Chat history** — previous sessions listed in sidebar, grouped by Today / Yesterday / Earlier
-- **Message UI** — user bubbles, assistant cards with copy button, typing indicator
-- **Empty state** — suggestion cards to kick off a conversation
-- **Logout** — clears token and redirects to sign in
+| State | Zustand |
+| Markdown | react-markdown + remark-gfm |
+| Diagrams | Mermaid.js |
+| Styling | Custom dark theme (CSS Modules + global CSS variables) |
 
 ## Getting Started
 
 ```bash
-# Install dependencies
 npm install
-
-# Start dev server
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173). The dev server proxies `/api/*`
+to the FastAPI backend at `localhost:8000` (configured in `vite.config.ts`).
 
-## Demo Mode
+## Features
 
-The app runs in **demo mode** by default — all data (users, sessions, messages) is stored in `localStorage`. No backend required.
+### Auth
 
-To connect to the real FastAPI backend once it's available, open `src/services/api.ts` and set:
+- Sign up / sign in with email + password (JWT)
+- Admin-gated accounts — new signups are `pending` until approved via SQL
 
-```ts
-const DEMO_MODE = false;
-```
+### Sessions
+
+- Create, rename, and delete chat sessions
+- Session history listed in sidebar
+- Messages load on session select and persist across refresh
+
+### Chat
+
+- SSE streaming for token-level response display with per-node status messages
+- Four execution modes selectable from the input bar:
+  - **Workflows → Fast** — low-latency deterministic RAG
+  - **Workflows → Deep** — intent analysis, optional clarification, validation loop
+  - **Agents → Single RAG Agent** — one agent with all tools
+  - **Agents → Supervisor Agent** — supervisor + five specialist workers
+- File upload (PDF / DOCX) attached to the active session
+
+### Chart rendering (E2B PNG)
+
+- `analyse` tool responses include base64 PNG charts captured from E2B sandbox
+- Charts are displayed inline below the assistant message
+- Hover over a chart to reveal **copy image** and **download PNG** icon buttons
+- Charts are persisted in `orchestrator_metadata` JSONB and restored on session reload
+
+### Mermaid diagram rendering
+
+- LLM responses containing ` ```mermaid ``` ` code blocks are rendered as
+  interactive SVGs by Mermaid.js — the user sees the diagram, not the code
+- Diagrams are validated server-side before reaching the frontend; invalid blocks
+  are silently removed rather than displayed as error boxes
+- Hover over a diagram to reveal **copy Mermaid code** and **download SVG** icon buttons
+- Messages containing diagrams or charts automatically expand to 92% bubble width
+  for better readability
+
+### Input area
+
+- Auto-resizing textarea (up to 180 px) with no scroll jump on resize
+- Spellcheck, autocomplete, autocorrect, and autocapitalize disabled
+- Single Ctrl+C / Enter to send; Shift+Enter for newline
 
 ## Project Structure
 
-```
+```text
 src/
-├── types/            # Shared TypeScript interfaces
-├── services/
-│   └── api.ts        # API client (demo + real backend)
-├── context/
-│   ├── AuthContext.tsx
-│   └── ChatContext.tsx
-├── pages/
-│   ├── SignIn.tsx
-│   ├── SignUp.tsx
-│   └── Chat.tsx
-└── components/
-    ├── auth/
-    │   └── AuthLayout.tsx
-    ├── sidebar/
-    │   └── Sidebar.tsx
-    └── chat/
-        ├── ChatWindow.tsx
-        ├── MessageBubble.tsx
-        ├── ChatInput.tsx
-        └── EmptyState.tsx
+├── api/
+│   └── client.ts          # Typed API client; chatApi.streamMessage yields StreamEvent
+├── store/
+│   ├── authStore.ts        # Zustand auth state (JWT, user record)
+│   ├── chatStore.ts        # Zustand chat state (sessions, messages, streaming)
+│   └── documentsStore.ts   # Zustand upload state
+├── types/
+│   └── api.ts              # Shared TypeScript interfaces (ChatMessageResponse, etc.)
+├── components/
+│   ├── ChatArea.tsx        # Input bar + message list + mode toggles
+│   ├── MessageBubble.tsx   # Renders one message (text + charts + ChartCard)
+│   ├── MessageBubble.module.css
+│   └── chat/
+│       └── MermaidDiagram.tsx   # Mermaid.js renderer with copy/download actions
+├── styles/
+│   └── global.css          # CSS custom properties (theme) + markdown content styles
+└── pages/
+    ├── SignIn.tsx
+    ├── SignUp.tsx
+    └── Chat.tsx
 ```
 
-## Backend Integration
-
-When the FastAPI backend is live, the following endpoints are expected:
+## API Contract
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+| ------ | -------- | ----------- |
 | POST | `/auth/signup` | Register new user |
 | POST | `/auth/signin` | Login, returns JWT |
 | POST | `/auth/signout` | Logout |
-| GET  | `/auth/me` | Current user info |
-| GET  | `/sessions` | List user sessions |
+| GET | `/auth/me` | Current user info |
+| GET | `/sessions` | List user sessions |
 | POST | `/sessions` | Create new session |
 | DELETE | `/sessions/:id` | Delete session |
-| GET  | `/sessions/:id/messages` | Fetch message history |
-| POST | `/sessions/:id/messages` | Send a message |
+| POST | `/sessions/:id/terminate` | Mark session inactive |
+| GET | `/sessions/:id/messages` | Fetch full message history (includes charts) |
+| POST | `/sessions/:id/messages` | Send a message (non-streaming) |
+| POST | `/sessions/:id/messages/stream` | Send a message (SSE streaming) |
+| POST | `/sessions/:id/upload` | Upload PDF or DOCX |
+| GET | `/sessions/:id/documents` | List ingested documents |
 
-## Planned Features
+### SSE event types (streaming)
 
-- [ ] Document upload (pgvector RAG — backend in progress)
-- [ ] Personal repository popup
-- [ ] Model selector (Ollama / OpenAI toggle)
+| Event type | Payload |
+| ---------- | ------- |
+| `user_message` | Persisted user `ChatMessageResponse` |
+| `status` | `{ content: string }` — current graph node label |
+| `token` | `{ content: string }` — one LLM token chunk |
+| `clarification` | `{ content: string }` — deep-mode HITL question |
+| `done` | Full `ChatMessageResponse` including `charts: string[]` |
+| `error` | `{ detail: string }` |
+
+## Still to address
+
 - [ ] Response feedback / ratings
+- [ ] Model selector (Ollama / OpenAI toggle in UI)
+- [ ] Agent evaluation / analytics panel

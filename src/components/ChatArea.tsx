@@ -23,6 +23,7 @@ export default function ChatArea() {
   const user = useAuthStore((s) => s.user)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -59,8 +60,18 @@ export default function ChatArea() {
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
     const el = e.target
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`
+    const msgs = messagesRef.current
+    // Pin scroll to bottom before resizing so the layout shift doesn't move content
+    const wasAtBottom = msgs
+      ? msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 80
+      : false
+    el.style.height = '1px'
+    requestAnimationFrame(() => {
+      el.style.height = `${Math.min(el.scrollHeight, 180)}px`
+      if (wasAtBottom && msgs) {
+        msgs.scrollTop = msgs.scrollHeight
+      }
+    })
   }
 
   const noSession = !activeSessionId
@@ -69,7 +80,7 @@ export default function ChatArea() {
 
   return (
     <div className={styles.root}>
-      <div className={styles.messages}>
+      <div className={styles.messages} ref={messagesRef}>
         {noSession ? (
           <div className={styles.emptyInner}>
             <span className={styles.emptyIcon}>
@@ -102,6 +113,7 @@ export default function ChatArea() {
                 sender={msg.sender}
                 createdAt={msg.created_at}
                 userName={user?.name ?? 'You'}
+                charts={msg.charts}
               />
             ))}
 
@@ -169,6 +181,10 @@ export default function ChatArea() {
             placeholder={noSession ? 'Create a session to start chatting…' : 'Message… (Enter to send, Shift+Enter for newline)'}
             rows={1}
             disabled={sending || noSession}
+            spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
           />
           <button
             className={`${styles.sendBtn} ${!input.trim() || sending || noSession ? styles.sendBtnDisabled : ''}`}

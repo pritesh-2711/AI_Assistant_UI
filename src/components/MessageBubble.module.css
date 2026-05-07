@@ -18,6 +18,10 @@
   padding: 10px 14px;
 }
 
+.bubbleWide {
+  max-width: 92%;
+}
+
 .bubbleUser {
   background: var(--user-bubble);
   border: 1px solid rgba(124, 106, 247, 0.2);
