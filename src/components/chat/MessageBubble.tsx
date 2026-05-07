@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Copy, Check, User } from 'lucide-react';
 import type { ChatMessage } from '../../types';
+import { MermaidDiagram } from './MermaidDiagram';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -36,6 +37,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
+  const parts = parseMessageParts(message.message);
+  const charts = (message as any).charts as string[] | undefined;
+
   return (
     <div className="flex gap-3 animate-slide-up">
       {/* Assistant avatar */}
@@ -50,10 +54,33 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
       <div className="max-w-[75%] flex-1">
         <div className="bg-surface-card border border-surface-border px-4 py-3 rounded-2xl rounded-tl-sm group relative">
-          <div
-            className="text-ink-primary text-sm leading-relaxed message-content whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ __html: formatMarkdown(message.message) }}
-          />
+          {/* Message text with mermaid blocks split out */}
+          {parts.map((part, i) =>
+            part.type === 'text' ? (
+              <div
+                key={i}
+                className="text-ink-primary text-sm leading-relaxed message-content whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ __html: formatMarkdown(part.content) }}
+              />
+            ) : (
+              <MermaidDiagram key={i} code={part.code} />
+            )
+          )}
+
+          {/* E2B-generated charts (base64 PNGs) */}
+          {charts && charts.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {charts.map((b64, i) => (
+                <img
+                  key={i}
+                  src={`data:image/png;base64,${b64}`}
+                  alt={`Chart ${i + 1}`}
+                  className="max-w-full rounded-lg border border-surface-border"
+                />
+              ))}
+            </div>
+          )}
+
           {/* Copy button */}
           <button
             onClick={copyToClipboard}
@@ -89,6 +116,34 @@ export function TypingIndicator() {
       </div>
     </div>
   );
+}
+
+type MessagePart =
+  | { type: 'text'; content: string }
+  | { type: 'mermaid'; code: string };
+
+const _MERMAID_BLOCK_RE = /```mermaid\s*\n([\s\S]*?)```/g;
+
+/** Split message text into plain-text and mermaid-diagram parts. */
+function parseMessageParts(text: string): MessagePart[] {
+  const parts: MessagePart[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  _MERMAID_BLOCK_RE.lastIndex = 0;
+
+  while ((match = _MERMAID_BLOCK_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+    }
+    parts.push({ type: 'mermaid', code: match[1] });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', content: text.slice(lastIndex) });
+  }
+
+  return parts.length > 0 ? parts : [{ type: 'text', content: text }];
 }
 
 /** Very minimal markdown formatter (bold, inline code, line breaks) */

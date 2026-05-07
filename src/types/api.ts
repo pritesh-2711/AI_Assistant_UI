@@ -27,6 +27,7 @@ export interface ChatMessageResponse {
   sender: 'user' | 'assistant'
   message: string
   created_at: string
+  charts?: string[]   // base64 PNGs; only present on live responses, not history
 }
 
 export interface SendMessageResponse {
