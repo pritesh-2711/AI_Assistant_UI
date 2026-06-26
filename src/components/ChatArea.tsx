@@ -114,6 +114,8 @@ export default function ChatArea() {
                 createdAt={msg.created_at}
                 userName={user?.name ?? 'You'}
                 charts={msg.charts}
+                chatId={msg.sender === 'assistant' ? msg.chat_id : undefined}
+                sessionId={msg.sender === 'assistant' ? msg.session_id : undefined}
               />
             ))}
 

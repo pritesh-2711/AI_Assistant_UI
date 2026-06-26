@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { chatApi, sessionsApi } from '../api/client'
 import type { ChatMessageResponse, SessionResponse } from '../types/api'
 
+type FeedbackRating = 'up' | 'down'
+
 interface ChatState {
   sessions: SessionResponse[]
   activeSessionId: string | null
@@ -14,6 +16,7 @@ interface ChatState {
   error: string | null
   selectedCategory: 'workflow' | 'agent'
   selectedVariant: 'fast' | 'deep' | 'single_rag_agent' | 'supervisor_orchestration_agent'
+  feedbackState: Record<string, FeedbackRating>  // chatId → rating
 
   loadSessions: () => Promise<void>
   selectSession: (sessionId: string) => Promise<void>
@@ -31,6 +34,7 @@ interface ChatState {
   ) => void
   clearError: () => void
   reset: () => void
+  submitFeedback: (sessionId: string, chatId: string, rating: FeedbackRating, comment?: string) => Promise<void>
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -45,6 +49,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
   selectedCategory: 'workflow',
   selectedVariant: 'fast',
+  feedbackState: {},
 
   clearError: () => set({ error: null }),
 
@@ -59,7 +64,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
       error: null,
       selectedCategory: 'workflow',
       selectedVariant: 'fast',
+      feedbackState: {},
     }),
+
+  submitFeedback: async (sessionId, chatId, rating, comment) => {
+    // Optimistically update UI before the request completes
+    set((state) => ({
+      feedbackState: { ...state.feedbackState, [chatId]: rating },
+    }))
+    try {
+      await chatApi.submitFeedback(sessionId, chatId, { rating, comment })
+    } catch {
+      // Revert optimistic update on failure
+      set((state) => {
+        const next = { ...state.feedbackState }
+        delete next[chatId]
+        return { feedbackState: next }
+      })
+    }
+  },
 
   setExecutionMode: (category, variant) =>
     set({

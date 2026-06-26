@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import styles from './MessageBubble.module.css'
 import { MermaidDiagram } from './chat/MermaidDiagram'
+import { useChatStore } from '../store/chatStore'
 
 function ChartCard({ b64, index }: { b64: string; index: number }) {
   const [hovered, setHovered] = useState(false)
@@ -85,15 +86,72 @@ function ChartCard({ b64, index }: { b64: string; index: number }) {
   )
 }
 
+interface FeedbackBarProps {
+  chatId: string
+  sessionId: string
+}
+
+function FeedbackBar({ chatId, sessionId }: FeedbackBarProps) {
+  const feedbackState = useChatStore((s) => s.feedbackState)
+  const submitFeedback = useChatStore((s) => s.submitFeedback)
+  const current = feedbackState[chatId]
+
+  const handleClick = (rating: 'up' | 'down') => {
+    if (current === rating) return  // already rated
+    submitFeedback(sessionId, chatId, rating)
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+      <button
+        onClick={() => handleClick('up')}
+        title="Helpful"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 26, height: 26, borderRadius: 6, padding: 0, cursor: 'pointer',
+          border: '1px solid',
+          borderColor: current === 'up' ? '#16a34a' : '#d1d5db',
+          background: current === 'up' ? '#f0fdf4' : '#fff',
+          color: current === 'up' ? '#16a34a' : '#9ca3af',
+          transition: 'all 0.15s',
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M1 8.5A1.5 1.5 0 0 1 2.5 7H4V5.5A3.5 3.5 0 0 1 7.5 2h1A1.5 1.5 0 0 1 10 3.5V7h1.5A1.5 1.5 0 0 1 13 8.5v5A1.5 1.5 0 0 1 11.5 15h-9A1.5 1.5 0 0 1 1 13.5v-5z"/>
+        </svg>
+      </button>
+      <button
+        onClick={() => handleClick('down')}
+        title="Not helpful"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 26, height: 26, borderRadius: 6, padding: 0, cursor: 'pointer',
+          border: '1px solid',
+          borderColor: current === 'down' ? '#dc2626' : '#d1d5db',
+          background: current === 'down' ? '#fef2f2' : '#fff',
+          color: current === 'down' ? '#dc2626' : '#9ca3af',
+          transition: 'all 0.15s',
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style={{ transform: 'rotate(180deg)' }}>
+          <path d="M1 8.5A1.5 1.5 0 0 1 2.5 7H4V5.5A3.5 3.5 0 0 1 7.5 2h1A1.5 1.5 0 0 1 10 3.5V7h1.5A1.5 1.5 0 0 1 13 8.5v5A1.5 1.5 0 0 1 11.5 15h-9A1.5 1.5 0 0 1 1 13.5v-5z"/>
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 interface Props {
   message: string
   sender: 'user' | 'assistant'
   createdAt: string
   userName: string
   charts?: string[]
+  chatId?: string
+  sessionId?: string
 }
 
-export default function MessageBubble({ message, sender, createdAt, userName, charts }: Props) {
+export default function MessageBubble({ message, sender, createdAt, userName, charts, chatId, sessionId }: Props) {
   const isUser = sender === 'user'
   const hasVisuals = !isUser && (message.includes('```mermaid') || (charts && charts.length > 0))
 
@@ -137,6 +195,11 @@ export default function MessageBubble({ message, sender, createdAt, userName, ch
               <ChartCard key={i} b64={b64} index={i} />
             ))}
           </div>
+        )}
+
+        {/* Feedback thumbs — shown only on persisted assistant messages */}
+        {!isUser && chatId && sessionId && (
+          <FeedbackBar chatId={chatId} sessionId={sessionId} />
         )}
       </div>
     </div>

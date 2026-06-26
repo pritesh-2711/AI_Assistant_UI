@@ -46,6 +46,14 @@ to the FastAPI backend at `localhost:8000` (configured in `vite.config.ts`).
   - **Agents → Supervisor Agent** — supervisor + five specialist workers
 - File upload (PDF / DOCX) attached to the active session
 
+### Response feedback
+
+- Thumbs up / thumbs down buttons appear below every persisted assistant message
+- Clicking a thumb immediately highlights it (optimistic UI) and calls `POST /sessions/{id}/messages/{chat_id}/feedback`
+- Rating is stored per `chatId` in Zustand `chatStore.feedbackState`; the highlight persists for the session
+- On API failure the highlight rolls back
+- The backend attributes the rating to the retrieved chunks that produced the response (RLHF-lite)
+
 ### Chart rendering (E2B PNG)
 
 - `analyse` tool responses include base64 PNG charts captured from E2B sandbox
@@ -110,6 +118,7 @@ src/
 | GET | `/sessions/:id/messages` | Fetch full message history (includes charts) |
 | POST | `/sessions/:id/messages` | Send a message (non-streaming) |
 | POST | `/sessions/:id/messages/stream` | Send a message (SSE streaming) |
+| POST | `/sessions/:id/messages/:chat_id/feedback` | Submit thumbs up/down for an assistant message |
 | POST | `/sessions/:id/upload` | Upload PDF or DOCX |
 | GET | `/sessions/:id/documents` | List ingested documents |
 
@@ -126,6 +135,5 @@ src/
 
 ## Still to address
 
-- [ ] Response feedback / ratings
 - [ ] Model selector (Ollama / OpenAI toggle in UI)
 - [ ] Agent evaluation / analytics panel

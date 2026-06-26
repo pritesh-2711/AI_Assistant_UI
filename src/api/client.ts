@@ -2,6 +2,8 @@ import type {
   ChatMessageResponse,
   CreateSessionRequest,
   DocumentRecord,
+  FeedbackRequest,
+  FeedbackResponse,
   SendMessageRequest,
   SendMessageResponse,
   SessionResponse,
@@ -133,6 +135,13 @@ export const chatApi = {
 
   sendMessage(sessionId: string, body: SendMessageRequest): Promise<SendMessageResponse> {
     return request(`/sessions/${sessionId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  },
+
+  submitFeedback(sessionId: string, chatId: string, body: FeedbackRequest): Promise<FeedbackResponse> {
+    return request(`/sessions/${sessionId}/messages/${chatId}/feedback`, {
       method: 'POST',
       body: JSON.stringify(body),
     })

@@ -30,6 +30,18 @@ export interface ChatMessageResponse {
   charts?: string[]   // base64 PNGs; only present on live responses, not history
 }
 
+export interface FeedbackRequest {
+  rating: 'up' | 'down'
+  comment?: string
+}
+
+export interface FeedbackResponse {
+  feedback_id: string
+  chat_id: string
+  session_id: string
+  rating: string
+}
+
 export interface SendMessageResponse {
   user_message: ChatMessageResponse
   assistant_message: ChatMessageResponse

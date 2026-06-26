@@ -281,10 +281,11 @@ All types in `src/types/api.ts` mirror `src/api/schemas.py` field-for-field.
 
 ### Chat endpoints
 
-| Method | Path                           | Request body       | Response                  |
-|--------|--------------------------------|--------------------|---------------------------|
-| GET    | /sessions/{id}/messages        | —                  | ChatMessageResponse[] 200 |
-| POST   | /sessions/{id}/messages        | SendMessageRequest | SendMessageResponse 201   |
+| Method | Path                                            | Request body       | Response                  |
+|--------|-------------------------------------------------|--------------------|---------------------------|
+| GET    | /sessions/{id}/messages                         | —                  | ChatMessageResponse[] 200 |
+| POST   | /sessions/{id}/messages                         | SendMessageRequest | SendMessageResponse 201   |
+| POST   | /sessions/{id}/messages/{chat_id}/feedback      | FeedbackRequest    | FeedbackResponse 201      |
 
 ### Document endpoints
 
@@ -312,7 +313,7 @@ Three Zustand stores:
 
 **`authStore`** — token, user profile, signin/signup/signout/loadMe actions.
 
-**`chatStore`** — sessions list, active session ID, messages, send/create/delete actions.
+**`chatStore`** — sessions list, active session ID, messages, send/create/delete actions. Also holds `feedbackState: Record<string, 'up' | 'down'>` (keyed by `chat_id`) and a `submitFeedback(sessionId, chatId, rating, comment?)` action that updates state optimistically and rolls back on API failure.
 
 **`documentsStore`** — per-session document lists, upload queue with status tracking (`uploading → processing → done | error`), drive panel open/close state.
 
