@@ -95,48 +95,90 @@ function FeedbackBar({ chatId, sessionId }: FeedbackBarProps) {
   const feedbackState = useChatStore((s) => s.feedbackState)
   const submitFeedback = useChatStore((s) => s.submitFeedback)
   const current = feedbackState[chatId]
+  const [draftRating, setDraftRating] = useState<'up' | 'down' | null>(null)
+  const [comment, setComment] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const handleClick = (rating: 'up' | 'down') => {
-    if (current === rating) return  // already rated
-    submitFeedback(sessionId, chatId, rating)
+    setDraftRating(rating)
+    setComment('')
+  }
+
+  const handleSubmit = async () => {
+    if (!draftRating) return
+    setSubmitting(true)
+    await submitFeedback(sessionId, chatId, draftRating, comment.trim() || undefined)
+    setSubmitting(false)
+    setDraftRating(null)
+    setComment('')
+  }
+
+  const handleCancel = () => {
+    setDraftRating(null)
+    setComment('')
   }
 
   return (
-    <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-      <button
-        onClick={() => handleClick('up')}
-        title="Helpful"
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: 26, height: 26, borderRadius: 6, padding: 0, cursor: 'pointer',
-          border: '1px solid',
-          borderColor: current === 'up' ? '#16a34a' : '#d1d5db',
-          background: current === 'up' ? '#f0fdf4' : '#fff',
-          color: current === 'up' ? '#16a34a' : '#9ca3af',
-          transition: 'all 0.15s',
-        }}
-      >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M1 8.5A1.5 1.5 0 0 1 2.5 7H4V5.5A3.5 3.5 0 0 1 7.5 2h1A1.5 1.5 0 0 1 10 3.5V7h1.5A1.5 1.5 0 0 1 13 8.5v5A1.5 1.5 0 0 1 11.5 15h-9A1.5 1.5 0 0 1 1 13.5v-5z"/>
-        </svg>
-      </button>
-      <button
-        onClick={() => handleClick('down')}
-        title="Not helpful"
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: 26, height: 26, borderRadius: 6, padding: 0, cursor: 'pointer',
-          border: '1px solid',
-          borderColor: current === 'down' ? '#dc2626' : '#d1d5db',
-          background: current === 'down' ? '#fef2f2' : '#fff',
-          color: current === 'down' ? '#dc2626' : '#9ca3af',
-          transition: 'all 0.15s',
-        }}
-      >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style={{ transform: 'rotate(180deg)' }}>
-          <path d="M1 8.5A1.5 1.5 0 0 1 2.5 7H4V5.5A3.5 3.5 0 0 1 7.5 2h1A1.5 1.5 0 0 1 10 3.5V7h1.5A1.5 1.5 0 0 1 13 8.5v5A1.5 1.5 0 0 1 11.5 15h-9A1.5 1.5 0 0 1 1 13.5v-5z"/>
-        </svg>
-      </button>
+    <div className={styles.feedback}>
+      <div className={styles.feedbackActions}>
+        <button
+          onClick={() => handleClick('up')}
+          title="Helpful"
+          className={`${styles.feedbackButton} ${current === 'up' ? styles.feedbackButtonUpActive : ''}`}
+          aria-pressed={current === 'up'}
+        >
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M1 8.5A1.5 1.5 0 0 1 2.5 7H4V5.5A3.5 3.5 0 0 1 7.5 2h1A1.5 1.5 0 0 1 10 3.5V7h1.5A1.5 1.5 0 0 1 13 8.5v5A1.5 1.5 0 0 1 11.5 15h-9A1.5 1.5 0 0 1 1 13.5v-5z"/>
+          </svg>
+        </button>
+        <button
+          onClick={() => handleClick('down')}
+          title="Not helpful"
+          className={`${styles.feedbackButton} ${current === 'down' ? styles.feedbackButtonDownActive : ''}`}
+          aria-pressed={current === 'down'}
+        >
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style={{ transform: 'rotate(180deg)' }}>
+            <path d="M1 8.5A1.5 1.5 0 0 1 2.5 7H4V5.5A3.5 3.5 0 0 1 7.5 2h1A1.5 1.5 0 0 1 10 3.5V7h1.5A1.5 1.5 0 0 1 13 8.5v5A1.5 1.5 0 0 1 11.5 15h-9A1.5 1.5 0 0 1 1 13.5v-5z"/>
+          </svg>
+        </button>
+      </div>
+
+      {draftRating && (
+        <div className={styles.feedbackForm}>
+          <label className={styles.feedbackLabel} htmlFor={`feedback-${chatId}`}>
+            {draftRating === 'up'
+              ? 'What did you like about this response?'
+              : 'What did you not like about this response?'}
+          </label>
+          <textarea
+            id={`feedback-${chatId}`}
+            className={styles.feedbackTextarea}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Optional feedback..."
+            rows={3}
+            disabled={submitting}
+          />
+          <div className={styles.feedbackFormActions}>
+            <button
+              type="button"
+              className={styles.feedbackSubmit}
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? 'Submitting…' : comment.trim() ? 'Submit feedback' : 'Submit without comment'}
+            </button>
+            <button
+              type="button"
+              className={styles.feedbackCancel}
+              onClick={handleCancel}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
