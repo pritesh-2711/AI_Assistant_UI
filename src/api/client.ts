@@ -1,4 +1,12 @@
 import type {
+  AdminChunkScore,
+  AdminDocument,
+  AdminFeedbackStats,
+  AdminGovernanceFlag,
+  AdminJobStatus,
+  AdminMessage,
+  AdminSession,
+  AdminUser,
   ChatMessageResponse,
   CreateSessionRequest,
   DocumentRecord,
@@ -230,6 +238,66 @@ export const documentsApi = {
 
   list(sessionId: string): Promise<DocumentRecord[]> {
     return request(`/sessions/${sessionId}/documents`)
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Admin
+// ---------------------------------------------------------------------------
+
+export const adminApi = {
+  overview(): Promise<{ stats: ReturnType<typeof Object>; recent_activity: ReturnType<typeof Array> }> {
+    return request('/admin/overview')
+  },
+
+  listUsers(search?: string): Promise<AdminUser[]> {
+    const q = search ? `?search=${encodeURIComponent(search)}` : ''
+    return request(`/admin/users${q}`)
+  },
+
+  listPendingUsers(): Promise<AdminUser[]> {
+    return request('/admin/users/pending')
+  },
+
+  approveUser(userId: string): Promise<void> {
+    return request(`/admin/users/${userId}/approve`, { method: 'POST' })
+  },
+
+  rejectUser(userId: string): Promise<void> {
+    return request(`/admin/users/${userId}/reject`, { method: 'POST' })
+  },
+
+  listSessions(search?: string): Promise<AdminSession[]> {
+    const q = search ? `?search=${encodeURIComponent(search)}` : ''
+    return request(`/admin/conversations${q}`)
+  },
+
+  getSessionMessages(sessionId: string): Promise<AdminMessage[]> {
+    return request(`/admin/conversations/${sessionId}`)
+  },
+
+  getSessionSummaries(): Promise<unknown[]> {
+    return request('/admin/conversations/summaries')
+  },
+
+  getFeedback(): Promise<{ stats: AdminFeedbackStats; chunk_scores: AdminChunkScore[] }> {
+    return request('/admin/feedback')
+  },
+
+  getGovernance(flaggedOnly = false): Promise<AdminGovernanceFlag[]> {
+    return request(`/admin/governance?flagged_only=${flaggedOnly}`)
+  },
+
+  getJobs(): Promise<AdminJobStatus[]> {
+    return request('/admin/jobs')
+  },
+
+  listDocuments(): Promise<AdminDocument[]> {
+    return request('/admin/knowledge-base')
+  },
+
+  deleteDocument(filename: string): Promise<void> {
+    return request(`/admin/knowledge-base/${encodeURIComponent(filename)}`, { method: 'DELETE' })
   },
 }
 

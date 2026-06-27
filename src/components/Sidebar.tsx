@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useChatStore } from '../store/chatStore'
 import { useAuthStore } from '../store/authStore'
 import styles from './Sidebar.module.css'
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function Sidebar({ onSignout, onToggleDrive, driveOpen }: Props) {
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const {
     sessions,
@@ -164,6 +166,20 @@ export default function Sidebar({ onSignout, onToggleDrive, driveOpen }: Props) 
           </div>
         </div>
         <div className={styles.footerActions}>
+          {user?.is_admin && (
+            <button
+              className={styles.driveBtn}
+              onClick={() => navigate('/admin')}
+              title="Admin dashboard"
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <rect x="1.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+                <rect x="8.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+                <rect x="1.5" y="8.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+                <rect x="8.5" y="8.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+              </svg>
+            </button>
+          )}
           <button
             className={`${styles.driveBtn} ${driveOpen ? styles.driveBtnActive : ''}`}
             onClick={onToggleDrive}
