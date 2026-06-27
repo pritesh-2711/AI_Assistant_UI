@@ -449,6 +449,25 @@ export default function AdminPage({ onExit }: { onExit: () => void }) {
     loadAll()
   }, [])
 
+  // Sync sidebar highlight with scroll position inside the overflow container
+  useEffect(() => {
+    const container = mainRef.current
+    if (!container) return
+
+    function onScroll() {
+      const scrollTop = container!.scrollTop + 100  // 100px lookahead from top
+      let current = NAV_ITEMS[0].id
+      for (const { id } of NAV_ITEMS) {
+        const el = document.getElementById(id)
+        if (el && el.offsetTop <= scrollTop) current = id
+      }
+      setActiveSection(current)
+    }
+
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => container.removeEventListener('scroll', onScroll)
+  }, [])
+
   async function loadAll() {
     try {
       const [ov, pu, sess, fb, gov, j, docs] = await Promise.allSettled([
@@ -506,8 +525,15 @@ export default function AdminPage({ onExit }: { onExit: () => void }) {
   }
 
   function scrollTo(id: string) {
+    const container = mainRef.current
+    const el = document.getElementById(id)
+    if (!container || !el) return
+    // Scroll within the overflow container, not the browser viewport
+    const elTop = el.getBoundingClientRect().top
+    const containerTop = container.getBoundingClientRect().top
+    container.scrollTo({ top: container.scrollTop + elTop - containerTop - 32, behavior: 'smooth' })
+    // Optimistically set active; scroll listener will correct it once scrolling settles
     setActiveSection(id)
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
