@@ -449,17 +449,29 @@ export default function AdminPage({ onExit }: { onExit: () => void }) {
     loadAll()
   }, [])
 
-  // Sync sidebar highlight with scroll position inside the overflow container
+  // Sync sidebar highlight with scroll position inside the overflow container.
+  //
+  // Fixed lookahead (e.g. 80px) breaks at the bottom: sections like "Knowledge base"
+  // have offsetTop > maxScrollTop + 80, so they never become active.
+  //
+  // Fix: use a dynamic lookahead that is small (80px) at the top of the page —
+  // preventing premature activation — and expands to nearly the full viewport height
+  // at the bottom, so every section can eventually be reached.
   useEffect(() => {
     const container = mainRef.current
     if (!container) return
 
     function onScroll() {
-      const scrollTop = container!.scrollTop + 100  // 100px lookahead from top
+      const { scrollTop, scrollHeight, clientHeight } = container!
+      const maxScroll = scrollHeight - clientHeight
+      const progress = maxScroll > 0 ? scrollTop / maxScroll : 0  // 0 = top, 1 = bottom
+      const lookahead = 80 + progress * Math.max(0, clientHeight - 160)
+      const readingLine = scrollTop + lookahead
+
       let current = NAV_ITEMS[0].id
       for (const { id } of NAV_ITEMS) {
         const el = document.getElementById(id)
-        if (el && el.offsetTop <= scrollTop) current = id
+        if (el && el.offsetTop <= readingLine) current = id
       }
       setActiveSection(current)
     }
